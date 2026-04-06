@@ -707,7 +707,7 @@ async function* openaiStreamToAnthropic(
                 )
                 if (repairedStructuredJson) {
                   partialJson = repairedStructuredJson
-                } else if (!/^\s*\{\s*"/.test(tc.jsonBuffer)) {
+                } else {
                   partialJson = JSON.stringify(
                     normalizeToolArguments(tc.name, tc.jsonBuffer),
                   )

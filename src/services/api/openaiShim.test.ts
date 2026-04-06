@@ -622,6 +622,66 @@ test('normalizes Bash tool arguments that are valid JSON literals', async () => 
   ])
 })
 
+test('keeps terminal empty Bash tool arguments invalid in non-streaming responses', async () => {
+  globalThis.fetch = (async (_input, _init) => {
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'google/gemini-3.1-pro-preview',
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              tool_calls: [
+                {
+                  id: 'function-call-1',
+                  type: 'function',
+                  function: {
+                    name: 'Bash',
+                    arguments: '',
+                  },
+                },
+              ],
+            },
+            finish_reason: 'tool_calls',
+          },
+        ],
+        usage: {
+          prompt_tokens: 12,
+          completion_tokens: 4,
+          total_tokens: 16,
+        },
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+
+  const message = await client.beta.messages.create({
+    model: 'google/gemini-3.1-pro-preview',
+    system: 'test system',
+    messages: [{ role: 'user', content: 'Use Bash' }],
+    max_tokens: 64,
+    stream: false,
+  }) as {
+    content?: Array<Record<string, unknown>>
+  }
+
+  expect(message.content).toEqual([
+    {
+      type: 'tool_use',
+      id: 'function-call-1',
+      name: 'Bash',
+      input: { raw: '' },
+    },
+  ])
+})
+
 test('normalizes plain string Bash tool arguments in streaming responses', async () => {
   globalThis.fetch = (async (_input, _init) => {
     const chunks = makeStreamChunks([
@@ -892,6 +952,82 @@ test('normalizes plain string Bash tool arguments when streaming starts with whi
     .join('')
 
   expect(normalizedInput).toBe('{"command":" pwd"}')
+})
+
+test('keeps terminal whitespace-only Bash arguments invalid in streaming responses', async () => {
+  globalThis.fetch = (async (_input, _init) => {
+    const chunks = makeStreamChunks([
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'google/gemini-3.1-pro-preview',
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: 'assistant',
+              tool_calls: [
+                {
+                  index: 0,
+                  id: 'function-call-1',
+                  type: 'function',
+                  function: {
+                    name: 'Bash',
+                    arguments: ' ',
+                  },
+                },
+              ],
+            },
+            finish_reason: null,
+          },
+        ],
+      },
+      {
+        id: 'chatcmpl-1',
+        object: 'chat.completion.chunk',
+        model: 'google/gemini-3.1-pro-preview',
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: 'tool_calls',
+          },
+        ],
+      },
+    ])
+
+    return makeSseResponse(chunks)
+  }) as FetchType
+
+  const client = createOpenAIShimClient({}) as OpenAIShimClient
+
+  const result = await client.beta.messages
+    .create({
+      model: 'google/gemini-3.1-pro-preview',
+      system: 'test system',
+      messages: [{ role: 'user', content: 'Use Bash' }],
+      max_tokens: 64,
+      stream: true,
+    })
+    .withResponse()
+
+  const events: Array<Record<string, unknown>> = []
+  for await (const event of result.data) {
+    events.push(event)
+  }
+
+  const normalizedInput = events
+    .filter(
+      event =>
+        event.type === 'content_block_delta' &&
+        typeof event.delta === 'object' &&
+        event.delta !== null &&
+        (event.delta as Record<string, unknown>).type === 'input_json_delta',
+    )
+    .map(event => (event.delta as Record<string, unknown>).partial_json)
+    .join('')
+
+  expect(normalizedInput).toBe('{"raw":" "}')
 })
 
 test('normalizes streaming Bash arguments that begin with bracket syntax', async () => {
@@ -1293,7 +1429,7 @@ test('does not repair truncated Bash objects that do not contain command', async
     .map(event => (event.delta as Record<string, unknown>).partial_json)
     .join('')
 
-  expect(streamedInput).toBe('{"cwd":"/tmp"')
+  expect(streamedInput).toBe('{"raw":"{\\"cwd\\":\\"/tmp\\""}')
 })
 
 test('preserves raw input for unknown plain string tool arguments', async () => {
