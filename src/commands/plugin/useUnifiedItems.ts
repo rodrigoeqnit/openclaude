@@ -71,7 +71,7 @@ export function useUnifiedItems({
       const pluginId = `${state.plugin.name}@${state.marketplace}`
       const isEnabled = mergedSettings?.enabledPlugins?.[pluginId] !== false
       const errors = pluginErrors.filter(
-        e => 'plugin' in e && e.plugin === state.plugin.name || e.source === pluginId || e.source.startsWith(`${state.plugin.name}@`),
+        e => ('plugin' in e && e.plugin === state.plugin.name) || e.source === pluginId || e.source.startsWith(`${state.plugin.name}@`),
       )
 
       const originalScope = state.plugin.isBuiltin ? 'builtin' : state.scope || 'user'
