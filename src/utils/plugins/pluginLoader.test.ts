@@ -62,8 +62,8 @@ describe('mergeHooksSettings', () => {
 
     // Both matchers must be present — marketplace must not overwrite plugin.json
     expect(merged.PostToolUse).toHaveLength(2)
-    const commands = merged.PostToolUse!.map(
-      (m: { hooks: Array<{ command?: string }> }) => m.hooks[0]?.command,
+    const commands = (merged.PostToolUse as Array<{ hooks: Array<{ command?: string }> }>).map(
+      m => m.hooks[0]?.command,
     )
     expect(commands).toContain('plugin-json-hook')
     expect(commands).toContain('marketplace-hook')
