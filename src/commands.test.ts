@@ -2,12 +2,22 @@ import { describe, expect, test } from 'bun:test'
 import {
   builtInCommandNames,
   formatDescriptionWithSource,
+  INTERNAL_ONLY_COMMANDS,
 } from './commands.js'
 import { isCommand } from './types/command.js'
 
 describe('builtInCommandNames', () => {
   test('includes the LSP command', () => {
     expect(builtInCommandNames()).toContain('lsp')
+  })
+
+  test('includes bughunter for normal users (not gated by INTERNAL_ONLY_COMMANDS)', () => {
+    // Regression: bughunter previously lived in INTERNAL_ONLY_COMMANDS and was
+    // never available to non-ant users. Ensure it stays in the public COMMANDS list.
+    delete process.env['USER_TYPE']
+    delete process.env['IS_DEMO']
+    expect(builtInCommandNames()).toContain('bughunter')
+    expect(INTERNAL_ONLY_COMMANDS.map(c => c.name)).not.toContain('bughunter')
   })
 })
 
