@@ -20,6 +20,7 @@ import {
   modelSupportsEffort,
 } from '../../utils/effort.js'
 import { env } from '../../utils/env.js'
+import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
 import { cacheKeys } from '../../utils/fileStateCache.js'
 import { getWorktreeCount } from '../../utils/git.js'
 import {
@@ -389,8 +390,10 @@ const externalTips: Tip[] = [
   },
   {
     id: 'custom-commands',
-    content: async () =>
-      'Skills let you create personal slash commands. Add a skill-name/SKILL.md to .claude/skills/ in your project, or to ~/.openclaude/skills/ (create the folder if it doesn\'t exist) to make it available in every project. Run /skills to see what\'s loaded.',
+    content: async () => {
+      const userSkillDir = `${getClaudeConfigHomeDir()}/skills`
+      return `Skills let you create personal slash commands. Add a skill-name/SKILL.md to .claude/skills/ in your project, or to ${userSkillDir}/ (create the folder if it doesn't exist) to make it available in every project. Run /skills to see what's loaded.`
+    },
     cooldownSessions: 15,
     async isRelevant() {
       const config = getGlobalConfig()
