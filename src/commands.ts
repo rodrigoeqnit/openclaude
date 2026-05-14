@@ -545,6 +545,8 @@ export async function getCommands(cwd: string): Promise<Command[]> {
  * Use this when dynamic skills are added to invalidate cached command lists.
  */
 export function clearCommandMemoizationCaches(): void {
+  COMMANDS.cache?.clear?.()
+  builtInCommandNames.cache?.clear?.()
   loadAllCommands.cache?.clear?.()
   getSkillToolCommands.cache?.clear?.()
   getSlashCommandToolSkills.cache?.clear?.()

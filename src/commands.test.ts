@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, test } from 'bun:test'
 import {
+  clearCommandMemoizationCaches,
   formatDescriptionWithSource,
   getCommands,
   INTERNAL_ONLY_COMMANDS,
@@ -26,6 +27,11 @@ describe('builtInCommandNames', () => {
     // never available to non-ant users. Ensure it stays in the public COMMANDS list.
     delete process.env['USER_TYPE']
     delete process.env['IS_DEMO']
+    // Clear ALL command caches — including the zero-arg COMMANDS() memoize that
+    // captures USER_TYPE at first call and never re-evaluates it. Without this,
+    // a prior test that ran with USER_TYPE=ant would pollute the COMMANDS cache
+    // and make bughunter appear gated even in a "normal user" run.
+    clearCommandMemoizationCaches()
     // Use a unique tmp dir to avoid the loadAllCommands memoize cache
     const cwd = await mkdtemp(join(tmpdir(), 'oc-test-bughunter-'))
     try {
